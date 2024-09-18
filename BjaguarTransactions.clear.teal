@@ -1,0 +1,5 @@
+#pragma version 10
+
+smart_contracts.bjaguar_transactions.contract.BjaguarTransactions.clear_state_program:
+    int 1
+    return
