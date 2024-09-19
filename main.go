@@ -88,8 +88,8 @@ func main() {
 		algodToken,
 	)
 
-	appID := uint64(721920807) //Hello world
-	//appID = application.AppCreate(algodClient, account)
+	//appID := uint64(722312483) //Hello world
+	appID := application.AppCreate(algodClient, account)
 	////application.AppOptIn(algodClient, appID, account)
 	//
 	//// example: APP_READ_STATE

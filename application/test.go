@@ -16,9 +16,9 @@ func AppCreate(algodClient *algod.Client, creator crypto.Account) uint64 {
 	// example: APP_SCHEMA
 	// declare application state storage (immutable)
 	var (
-		localInts   uint64 = 1
-		localBytes  uint64 = 1
-		globalInts  uint64 = 1
+		localInts   uint64 = 0
+		localBytes  uint64 = 0
+		globalInts  uint64 = 0
 		globalBytes uint64 = 0
 	)
 
@@ -332,6 +332,7 @@ func AppCall(algodClient *algod.Client, appID uint64, caller crypto.Account) {
 	)
 
 	appArgs := [][]byte{
+		[]byte("hello"), // Method (por ejemplo, el string "hello")
 		[]byte("world"), // Argumento de entrada (por ejemplo, el string "world")
 	}
 
