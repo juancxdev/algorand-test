@@ -88,8 +88,8 @@ func main() {
 		algodToken,
 	)
 
-	//appID := uint64(722312483) //Hello world
-	appID := application.AppCreate(algodClient, account)
+	appID := uint64(722312483) //Hello world
+	//appID := application.AppCreate(algodClient, account)
 	////application.AppOptIn(algodClient, appID, account)
 	//
 	//// example: APP_READ_STATE
@@ -99,21 +99,6 @@ func main() {
 		log.Fatalf("failed to get app info: %s", err)
 	}
 	log.Printf("app info: %+v", appInfo)
-	//
-	//// grab local state for an app id for a single account
-	//acctInfo, err := algodClient.AccountApplicationInformation(
-	//	account.Address.String(), appID,
-	//).Do(context.Background())
-	//if err != nil {
-	//	log.Fatalf("failed to get app info: %s", err)
-	//}
-	//log.Printf("app info: %+v", acctInfo)
-	//// example: APP_READ_STATE
-	//
-	////application.AppNoOp(algodClient, appID, account)
-	////application.AppUpdate(algodClient, appID, account)
-	application.AppCall(algodClient, appID, account)
-	//application.AppCloseOut(algodClient, appID, account)
-	//application.AppDelete(algodClient, appID, account)
 
+	application.AppCall(algodClient, appID, account)
 }

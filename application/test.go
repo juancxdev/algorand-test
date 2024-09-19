@@ -3,13 +3,16 @@ package application
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"github.com/algorand/go-algorand-sdk/v2/abi"
 	"github.com/algorand/go-algorand-sdk/v2/client/v2/algod"
 	"github.com/algorand/go-algorand-sdk/v2/crypto"
-	"github.com/algorand/go-algorand-sdk/v2/examples"
 	"github.com/algorand/go-algorand-sdk/v2/transaction"
 	"github.com/algorand/go-algorand-sdk/v2/types"
 	"io/ioutil"
 	"log"
+	"os"
 )
 
 func AppCreate(algodClient *algod.Client, creator crypto.Account) uint64 {
@@ -98,314 +101,85 @@ func AppCreate(algodClient *algod.Client, creator crypto.Account) uint64 {
 	return appID
 }
 
-func AppOptIn(algodClient *algod.Client, appID uint64, caller crypto.Account) {
-	// example: APP_OPTIN
-	sp, err := algodClient.SuggestedParams().Do(context.Background())
-	if err != nil {
-		log.Fatalf("error getting suggested tx params: %s", err)
-	}
-
-	// Create a new clawback transaction with the target of the user address and the recipient as the creator
-	// address, being sent from the address marked as `clawback` on the asset, in this case the same as creator
-	txn, err := transaction.MakeApplicationOptInTx(
-		appID, nil, nil, nil, nil, sp,
-		caller.Address, nil, types.Digest{}, [32]byte{}, types.ZeroAddress,
-	)
-	if err != nil {
-		log.Fatalf("failed to make txn: %s", err)
-	}
-	// sign the transaction
-	txid, stx, err := crypto.SignTransaction(caller.PrivateKey, txn)
-	if err != nil {
-		log.Fatalf("failed to sign transaction: %s", err)
-	}
-
-	// Broadcast the transaction to the network
-	_, err = algodClient.SendRawTransaction(stx).Do(context.Background())
-	if err != nil {
-		log.Fatalf("failed to send transaction: %s", err)
-	}
-
-	// Wait for confirmation
-	confirmedTxn, err := transaction.WaitForConfirmation(algodClient, txid, 4, context.Background())
-	if err != nil {
-		log.Fatalf("error waiting for confirmation:  %s", err)
-	}
-
-	log.Printf("OptIn Transaction: %s confirmed in Round %d\n", txid, confirmedTxn.ConfirmedRound)
-	// example: APP_OPTIN
-}
-
-func AppNoOp(algodClient *algod.Client, appID uint64, caller crypto.Account) {
-	// example: APP_NOOP
-	sp, err := algodClient.SuggestedParams().Do(context.Background())
-	if err != nil {
-		log.Fatalf("error getting suggested tx params: %s", err)
-	}
-
-	var (
-		appArgs [][]byte
-		accts   []string
-		apps    []uint64
-		assets  []uint64
-	)
-
-	// Add an arg to our app call
-	appArgs = append(appArgs, []byte("arg0"))
-
-	txn, err := transaction.MakeApplicationNoOpTx(
-		appID, appArgs, accts, apps, assets, sp,
-		caller.Address, nil, types.Digest{}, [32]byte{}, types.ZeroAddress,
-	)
-	if err != nil {
-		log.Fatalf("failed to make txn: %s", err)
-	}
-
-	// sign the transaction
-	txid, stx, err := crypto.SignTransaction(caller.PrivateKey, txn)
-	if err != nil {
-		log.Fatalf("failed to sign transaction: %s", err)
-	}
-
-	// Broadcast the transaction to the network
-	_, err = algodClient.SendRawTransaction(stx).Do(context.Background())
-	if err != nil {
-		log.Fatalf("failed to send transaction: %s", err)
-	}
-
-	// Wait for confirmation
-	confirmedTxn, err := transaction.WaitForConfirmation(algodClient, txid, 4, context.Background())
-	if err != nil {
-		log.Fatalf("error waiting for confirmation:  %s", err)
-	}
-
-	log.Printf("NoOp Transaction: %s confirmed in Round %d\n", txid, confirmedTxn.ConfirmedRound)
-	// example: APP_NOOP
-}
-
-func AppUpdate(algodClient *algod.Client, appID uint64, caller crypto.Account) {
-	approvalBinary := examples.CompileTeal(algodClient, "application/approval_refactored.teal")
-	clearBinary := examples.CompileTeal(algodClient, "application/clear.teal")
-
-	// example: APP_UPDATE
-	sp, err := algodClient.SuggestedParams().Do(context.Background())
-	if err != nil {
-		log.Fatalf("error getting suggested tx params: %s", err)
-	}
-
-	var (
-		appArgs [][]byte
-		accts   []string
-		apps    []uint64
-		assets  []uint64
-	)
-
-	txn, err := transaction.MakeApplicationUpdateTx(
-		appID, appArgs, accts, apps, assets, approvalBinary, clearBinary,
-		sp, caller.Address, nil, types.Digest{}, [32]byte{}, types.ZeroAddress,
-	)
-	if err != nil {
-		log.Fatalf("failed to make txn: %s", err)
-	}
-
-	// sign the transaction
-	txid, stx, err := crypto.SignTransaction(caller.PrivateKey, txn)
-	if err != nil {
-		log.Fatalf("failed to sign transaction: %s", err)
-	}
-
-	// Broadcast the transaction to the network
-	_, err = algodClient.SendRawTransaction(stx).Do(context.Background())
-	if err != nil {
-		log.Fatalf("failed to send transaction: %s", err)
-	}
-
-	// Wait for confirmation
-	confirmedTxn, err := transaction.WaitForConfirmation(algodClient, txid, 4, context.Background())
-	if err != nil {
-		log.Fatalf("error waiting for confirmation:  %s", err)
-	}
-
-	log.Printf("Update Transaction: %s confirmed in Round %d\n", txid, confirmedTxn.ConfirmedRound)
-	// example: APP_UPDATE
-}
-
-func AppCloseOut(algodClient *algod.Client, appID uint64, caller crypto.Account) {
-	// example: APP_CLOSEOUT
-	sp, err := algodClient.SuggestedParams().Do(context.Background())
-	if err != nil {
-		log.Fatalf("error getting suggested tx params: %s", err)
-	}
-
-	var (
-		appArgs [][]byte
-		accts   []string
-		apps    []uint64
-		assets  []uint64
-	)
-
-	txn, err := transaction.MakeApplicationCloseOutTx(
-		appID, appArgs, accts, apps, assets, sp,
-		caller.Address, nil, types.Digest{}, [32]byte{}, types.ZeroAddress,
-	)
-	if err != nil {
-		log.Fatalf("failed to make txn: %s", err)
-	}
-
-	// sign the transaction
-	txid, stx, err := crypto.SignTransaction(caller.PrivateKey, txn)
-	if err != nil {
-		log.Fatalf("failed to sign transaction: %s", err)
-	}
-
-	// Broadcast the transaction to the network
-	_, err = algodClient.SendRawTransaction(stx).Do(context.Background())
-	if err != nil {
-		log.Fatalf("failed to send transaction: %s", err)
-	}
-
-	// Wait for confirmation
-	confirmedTxn, err := transaction.WaitForConfirmation(algodClient, txid, 4, context.Background())
-	if err != nil {
-		log.Fatalf("error waiting for confirmation:  %s", err)
-	}
-
-	log.Printf("Closeout Transaction: %s confirmed in Round %d\n", txid, confirmedTxn.ConfirmedRound)
-	// example: APP_CLOSEOUT
-}
-
-func AppClearState(algodClient *algod.Client, appID uint64, caller crypto.Account) {
-	// example: APP_CLEAR
-	sp, err := algodClient.SuggestedParams().Do(context.Background())
-	if err != nil {
-		log.Fatalf("error getting suggested tx params: %s", err)
-	}
-
-	var (
-		appArgs [][]byte
-		accts   []string
-		apps    []uint64
-		assets  []uint64
-	)
-
-	txn, err := transaction.MakeApplicationClearStateTx(
-		appID, appArgs, accts, apps, assets, sp,
-		caller.Address, nil, types.Digest{}, [32]byte{}, types.ZeroAddress,
-	)
-	if err != nil {
-		log.Fatalf("failed to make txn: %s", err)
-	}
-
-	// sign the transaction
-	txid, stx, err := crypto.SignTransaction(caller.PrivateKey, txn)
-	if err != nil {
-		log.Fatalf("failed to sign transaction: %s", err)
-	}
-
-	// Broadcast the transaction to the network
-	_, err = algodClient.SendRawTransaction(stx).Do(context.Background())
-	if err != nil {
-		log.Fatalf("failed to send transaction: %s", err)
-	}
-
-	// Wait for confirmation
-	confirmedTxn, err := transaction.WaitForConfirmation(algodClient, txid, 4, context.Background())
-	if err != nil {
-		log.Fatalf("error waiting for confirmation:  %s", err)
-	}
-
-	log.Printf("ClearState Transaction: %s confirmed in Round %d\n", txid, confirmedTxn.ConfirmedRound)
-	// example: APP_CLEAR
-}
-
 func AppCall(algodClient *algod.Client, appID uint64, caller crypto.Account) {
-	// example: APP_CALL
+	b, err := os.ReadFile("./Bjaguar.arc32.json")
+	if err != nil {
+		log.Fatalf("Failed to open contract file: %+v", err)
+	}
+
+	// Crear un mapa vacío para almacenar el JSON parseado
+	var contractJSON map[string]interface{}
+
+	// Parsear el JSON al mapa
+	err = json.Unmarshal(b, &contractJSON)
+	if err != nil {
+		fmt.Println("Error al parsear el JSON:", err)
+		return
+	}
+
+	contractData, ok := contractJSON["contract"]
+	if !ok {
+		log.Fatal("El campo 'contract' no fue encontrado en el JSON")
+	}
+
+	// Convertir el valor de 'contract' nuevamente a JSON (para poder deserializarlo)
+	contractBytes, err := json.Marshal(contractData)
+	if err != nil {
+		log.Fatalf("Error al serializar 'contract' nuevamente: %+v", err)
+	}
+
+	contract := &abi.Contract{}
+	if err := json.Unmarshal(contractBytes, contract); err != nil {
+		log.Fatalf("Failed to marshal contract: %+v", err)
+	}
+
+	//app_addr := crypto.GetApplicationAddress(appID)
+
 	sp, err := algodClient.SuggestedParams().Do(context.Background())
 	if err != nil {
-		log.Fatalf("error getting suggested tx params: %s", err)
+		log.Fatalf("Failed to get suggeted params: %+v", err)
 	}
 
-	var (
-		accts  []string
-		apps   []uint64
-		assets []uint64
-	)
-
-	appArgs := [][]byte{
-		[]byte("hello"), // Method (por ejemplo, el string "hello")
-		[]byte("world"), // Argumento de entrada (por ejemplo, el string "world")
+	// Create a signer and some common parameters
+	signer := transaction.BasicAccountTransactionSigner{Account: caller}
+	mcp := transaction.AddMethodCallParams{
+		AppID:           appID,
+		Sender:          caller.Address,
+		SuggestedParams: sp,
+		OnComplete:      types.NoOpOC,
+		Signer:          signer,
 	}
 
-	txn, err := transaction.MakeApplicationNoOpTx(
-		appID, appArgs, accts, apps, assets, sp,
-		caller.Address, nil, types.Digest{}, [32]byte{}, types.ZeroAddress,
-	)
+	var atc = transaction.AtomicTransactionComposer{}
+
+	err = atc.AddMethodCall(combine(mcp, getMethod(contract, "hello"), []interface{}{"success"}))
+
 	if err != nil {
-		log.Fatalf("failed to make txn: %s", err)
+		log.Fatalf("Failed to add method call: %+v", err)
 	}
 
-	// sign the transaction
-	txid, stx, err := crypto.SignTransaction(caller.PrivateKey, txn)
+	ret, err := atc.Execute(algodClient, context.Background(), 2)
 	if err != nil {
-		log.Fatalf("failed to sign transaction: %s", err)
+		log.Fatalf("Failed to execute call: %+v", err)
 	}
 
-	// Broadcast the transaction to the network
-	_, err = algodClient.SendRawTransaction(stx).Do(context.Background())
-	if err != nil {
-		log.Fatalf("failed to send transaction: %s", err)
+	for _, r := range ret.MethodResults {
+		log.Printf("%+v", r.TransactionInfo.Logs)
+		log.Printf("%s returned %+v", r.Method.Name, r.ReturnValue)
 	}
-
-	// Wait for confirmation
-	confirmedTxn, err := transaction.WaitForConfirmation(algodClient, txid, 4, context.Background())
-	if err != nil {
-		log.Fatalf("error waiting for confirmation:  %s", err)
-	}
-
-	log.Printf("NoOp Transaction: %s confirmed in Round %d\n", txid, confirmedTxn.ConfirmedRound)
-	// example: APP_CALL
 }
 
-func AppDelete(algodClient *algod.Client, appID uint64, caller crypto.Account) {
-	// example: APP_DELETE
-	sp, err := algodClient.SuggestedParams().Do(context.Background())
+func getMethod(c *abi.Contract, name string) abi.Method {
+	m, err := c.GetMethodByName(name)
 	if err != nil {
-		log.Fatalf("error getting suggested tx params: %s", err)
+		log.Fatalf("No method named: %s", name)
 	}
+	return m
+}
 
-	var (
-		appArgs [][]byte
-		accts   []string
-		apps    []uint64
-		assets  []uint64
-	)
-
-	txn, err := transaction.MakeApplicationDeleteTx(
-		appID, appArgs, accts, apps, assets, sp,
-		caller.Address, nil, types.Digest{}, [32]byte{}, types.ZeroAddress,
-	)
-	if err != nil {
-		log.Fatalf("failed to make txn: %s", err)
-	}
-
-	// sign the transaction
-	txid, stx, err := crypto.SignTransaction(caller.PrivateKey, txn)
-	if err != nil {
-		log.Fatalf("failed to sign transaction: %s", err)
-	}
-
-	// Broadcast the transaction to the network
-	_, err = algodClient.SendRawTransaction(stx).Do(context.Background())
-	if err != nil {
-		log.Fatalf("failed to send transaction: %s", err)
-	}
-
-	// Wait for confirmation
-	confirmedTxn, err := transaction.WaitForConfirmation(algodClient, txid, 4, context.Background())
-	if err != nil {
-		log.Fatalf("error waiting for confirmation:  %s", err)
-	}
-
-	log.Printf("Delete Transaction: %s confirmed in Round %d\n", txid, confirmedTxn.ConfirmedRound)
-	// example: APP_DELETE
+func combine(mcp transaction.AddMethodCallParams, m abi.Method, a []interface{}, boxes ...types.AppBoxReference) transaction.AddMethodCallParams {
+	mcp.Method = m
+	mcp.MethodArgs = a
+	mcp.BoxReferences = boxes
+	return mcp
 }
